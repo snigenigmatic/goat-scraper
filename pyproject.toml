@@ -1,0 +1,16 @@
+[project]
+name = "pdf-fetcher"
+version = "0.1.0"
+description = "PESU Academy PDF Fetcher - Download course materials automatically"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "requests>=2.31.0",
+    "beautifulsoup4>=4.12.0",
+    "python-dotenv>=1.0.0",
+    "pypdf>=3.17.0",
+    "colorama>=0.4.6",
+    "tqdm>=4.66.0",
+]
+
+
