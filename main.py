@@ -10,9 +10,12 @@ Interactive tool to fetch course PDFs from PESU Academy using the following work
 """
 
 import sys
+import os
 import json
 import logging
 import argparse
+import subprocess
+import shutil
 from typing import Optional, Dict, List, Any
 import requests
 from bs4 import BeautifulSoup
@@ -50,10 +53,12 @@ def setup_logger(name: str = "pdf_fetcher", log_file: Optional[Path] = None) -> 
         }
         
         def format(self, record):
-            levelname = record.levelname
+            # Make a copy to avoid modifying the original record
+            log_record = logging.makeLogRecord(record.__dict__)
+            levelname = log_record.levelname
             if levelname in self.COLORS:
-                record.levelname = f"{self.COLORS[levelname]}{levelname}{Style.RESET_ALL}"
-            return super().format(record)
+                log_record.levelname = f"{self.COLORS[levelname]}{levelname}{Style.RESET_ALL}"
+            return super().format(log_record)
     
     console_handler.setFormatter(
         ColoredFormatter(
@@ -83,6 +88,102 @@ def setup_logger(name: str = "pdf_fetcher", log_file: Optional[Path] = None) -> 
 
 
 logger = setup_logger()  # Default logger for initialization
+
+
+# ============================================================================
+# FILE CONVERSION UTILITIES  
+# ============================================================================
+
+def convert_to_pdf(input_path: Path) -> Optional[Path]:
+    """
+    Convert Office documents (PPTX, DOCX, etc.) to PDF.
+    Tries multiple methods in order of preference.
+    Returns the PDF path if successful, None otherwise.
+    """
+    if not input_path.exists():
+        logger.error(f"File not found: {input_path}")
+        return None
+    
+    suffix = input_path.suffix.lower()
+    if suffix == '.pdf':
+        return input_path  # Already a PDF
+    
+    output_path = input_path.with_suffix('.pdf')
+    
+    # Method 1: Try soffice (LibreOffice) headless mode
+    soffice_paths = [
+        '/Applications/LibreOffice.app/Contents/MacOS/soffice',  # macOS
+        '/usr/bin/soffice',  # Linux
+        '/usr/bin/libreoffice',  # Linux alternative
+        shutil.which('soffice'),
+        shutil.which('libreoffice'),
+    ]
+    
+    for soffice in soffice_paths:
+        if soffice and Path(soffice).exists() if isinstance(soffice, str) else soffice:
+            try:
+                logger.info(f"Converting {input_path.name} to PDF using LibreOffice...")
+                result = subprocess.run([
+                    soffice,
+                    '--headless',
+                    '--convert-to', 'pdf',
+                    '--outdir', str(input_path.parent),
+                    str(input_path)
+                ], capture_output=True, text=True, timeout=120)
+                
+                if output_path.exists():
+                    logger.info(f"✓ Converted to PDF: {output_path}")
+                    # Optionally remove original
+                    # input_path.unlink()
+                    return output_path
+            except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
+                logger.debug(f"LibreOffice conversion failed: {e}")
+                continue
+    
+    # Method 2: Try macOS Keynote/Pages via osascript (for PPTX/DOCX)
+    if sys.platform == 'darwin':
+        if suffix in ['.pptx', '.ppt']:
+            try:
+                logger.info(f"Converting {input_path.name} to PDF using Keynote...")
+                script = f'''
+                tell application "Keynote"
+                    set theDoc to open POSIX file "{input_path}"
+                    export theDoc to POSIX file "{output_path}" as PDF
+                    close theDoc
+                end tell
+                '''
+                result = subprocess.run(['osascript', '-e', script], 
+                                       capture_output=True, text=True, timeout=120)
+                if output_path.exists():
+                    logger.info(f"✓ Converted to PDF: {output_path}")
+                    return output_path
+            except Exception as e:
+                logger.debug(f"Keynote conversion failed: {e}")
+        
+        elif suffix in ['.docx', '.doc']:
+            try:
+                logger.info(f"Converting {input_path.name} to PDF using Pages...")
+                script = f'''
+                tell application "Pages"
+                    set theDoc to open POSIX file "{input_path}"
+                    export theDoc to POSIX file "{output_path}" as PDF
+                    close theDoc
+                end tell
+                '''
+                result = subprocess.run(['osascript', '-e', script],
+                                       capture_output=True, text=True, timeout=120)
+                if output_path.exists():
+                    logger.info(f"✓ Converted to PDF: {output_path}")
+                    return output_path
+            except Exception as e:
+                logger.debug(f"Pages conversion failed: {e}")
+    
+    # Method 3: For PPTX, try python-pptx + reportlab (limited - only extracts text/images)
+    # This is a fallback that won't preserve full formatting
+    
+    logger.warning(f"Could not convert {input_path.name} to PDF. Keeping original format.")
+    logger.info("Tip: Install LibreOffice for automatic conversion, or convert manually.")
+    return None
 
 
 # ============================================================================
@@ -397,18 +498,34 @@ class PESUPDFFetcher:
                 logger.info("Response is HTML, parsing for download links...")
                 soup = BeautifulSoup(response.text, "html.parser")
                 
-                # Look for links with onclick that call loadIframe or downloadslidecoursedoc
+                # Look for links with onclick that call loadIframe, downloadslidecoursedoc, or downloadcoursedoc
                 download_links = []
+                import re
                 
-                for link in soup.find_all('a'):
-                    onclick = link.get('onclick', '')
-                    href = link.get('href', '')
-                    text = link.text.strip()
+                # Search ALL elements with onclick attribute (not just <a> tags)
+                for element in soup.find_all(onclick=True):
+                    onclick = element.get('onclick', '')
+                    text = element.text.strip()
+                    
+                    # Check for downloadcoursedoc pattern (e.g., onclick="downloadcoursedoc('ID')")
+                    if 'downloadcoursedoc' in onclick:
+                        # Extract ID from downloadcoursedoc('ID') pattern
+                        match = re.search(r"downloadcoursedoc\('([^']+)'", onclick)
+                        if match:
+                            doc_id = match.group(1)
+                            download_url = f"/Academy/s/referenceMeterials/downloadcoursedoc/{doc_id}"
+                            full_url = f"https://www.pesuacademy.com{download_url}"
+                            
+                            download_links.append({
+                                'text': text or 'Course Document',
+                                'href': download_url,
+                                'full_url': full_url
+                            })
+                            continue
                     
                     # Check onclick for downloadslidecoursedoc pattern
                     if 'downloadslidecoursedoc' in onclick:
                         # Extract the URL from onclick="loadIframe('/Academy/a/referenceMeterials/downloadslidecoursedoc/ID')"
-                        import re
                         match = re.search(r"loadIframe\('([^']+)'", onclick)
                         if match:
                             download_url = match.group(1)
@@ -428,9 +545,32 @@ class PESUPDFFetcher:
                                 'href': download_url,
                                 'full_url': full_url
                             })
+                
+                # Also check <a> tags for href-based download links
+                for link in soup.find_all('a'):
+                    href = link.get('href', '')
+                    text = link.text.strip()
                     
-                    # Also check for direct href links to downloadslidecoursedoc
-                    elif 'downloadslidecoursedoc' in href:
+                    # Check for direct href links to downloadslidecoursedoc
+                    if 'downloadslidecoursedoc' in href:
+                        download_url = href
+                        download_url = download_url.split('#')[0]
+                        
+                        if download_url.startswith('/Academy'):
+                            full_url = f"https://www.pesuacademy.com{download_url}"
+                        elif download_url.startswith('http'):
+                            full_url = download_url
+                        else:
+                            full_url = f"{self.BASE_URL}/{download_url.lstrip('/')}"
+                        
+                        download_links.append({
+                            'text': text or 'Course Document',
+                            'href': download_url,
+                            'full_url': full_url
+                        })
+                    
+                    # Also check for any links with referenceMeterials or downloads
+                    elif 'referenceMeterials' in href or 'download' in href.lower():
                         download_url = href
                         download_url = download_url.split('#')[0]
                         
@@ -469,10 +609,26 @@ class PESUPDFFetcher:
                 file_response = self.session.get(selected_link['full_url'], stream=True)
                 file_response.raise_for_status()
                 
-                # Determine file extension from content-type
+                # Try to get filename from Content-Disposition header first
+                content_disposition = file_response.headers.get('Content-Disposition', '')
+                original_filename = None
+                if 'filename=' in content_disposition:
+                    import re
+                    # Try to extract filename from Content-Disposition
+                    match = re.search(r'filename[*]?=["\']?(?:UTF-8\'\')?([^"\';\n]+)', content_disposition)
+                    if match:
+                        original_filename = match.group(1).strip()
+                        logger.info(f"Original filename from server: {original_filename}")
+                
+                # Determine file extension from content-type or original filename
                 file_content_type = file_response.headers.get('Content-Type', '')
                 extension = '.pdf'  # Default
-                if 'application/pdf' in file_content_type:
+                
+                # First try to get extension from original filename
+                if original_filename and '.' in original_filename:
+                    extension = '.' + original_filename.rsplit('.', 1)[-1].lower()
+                # Otherwise use content-type
+                elif 'application/pdf' in file_content_type:
                     extension = '.pdf'
                 elif 'application/vnd.openxmlformats-officedocument.presentationml.presentation' in file_content_type:
                     extension = '.pptx'
@@ -486,6 +642,29 @@ class PESUPDFFetcher:
                     extension = '.xlsx'
                 elif 'application/vnd.ms-excel' in file_content_type:
                     extension = '.xls'
+                elif 'application/octet-stream' in file_content_type:
+                    # Generic binary - try to detect from magic bytes
+                    # Read first few bytes to detect file type
+                    first_chunk = next(file_response.iter_content(chunk_size=8), b'')
+                    if first_chunk.startswith(b'PK'):
+                        # ZIP-based format (pptx, docx, xlsx)
+                        # Need more context, default to pptx for presentations
+                        extension = '.pptx'
+                        logger.info("Detected ZIP-based format (likely Office document)")
+                    elif first_chunk.startswith(b'%PDF'):
+                        extension = '.pdf'
+                    # Put the chunk back by creating a new iterator
+                    def iter_with_first_chunk():
+                        yield first_chunk
+                        yield from file_response.iter_content(chunk_size=8192)
+                    content_iterator = iter_with_first_chunk()
+                else:
+                    content_iterator = None
+                
+                if 'content_iterator' not in locals() or content_iterator is None:
+                    content_iterator = file_response.iter_content(chunk_size=8192)
+                
+                logger.info(f"Detected file type: {extension}")
                 
                 # Determine output path
                 if output_path is None:
@@ -501,11 +680,19 @@ class PESUPDFFetcher:
                 
                 # Save file
                 with open(output_path, 'wb') as f:
-                    for chunk in file_response.iter_content(chunk_size=8192):
+                    for chunk in content_iterator:
                         f.write(chunk)
                 
                 file_size = output_path.stat().st_size
                 logger.info(f"✓ File downloaded successfully: {output_path} ({file_size:,} bytes)")
+                
+                # Convert to PDF if not already a PDF
+                if extension != '.pdf':
+                    pdf_path = convert_to_pdf(output_path)
+                    if pdf_path:
+                        # Update the output path to the PDF
+                        output_path = pdf_path
+                
                 return True
             
             else:
@@ -671,10 +858,16 @@ def batch_download_all(fetcher: PESUPDFFetcher, course_id: str, course_name: str
             continue
         
         # Create unit directory - extract title after colon or use full name
-        # Format: "Unit 1: Introduction" -> "Introduction"
+        # Format: "Unit 1: Introduction" -> "Introduction" or "IoT  Analytics, Security & Privacy:" -> "IoT-Analytics-Security-Privacy"
         unit_title = unit_name.split(':', 1)[-1].strip() if ':' in unit_name else unit_name
+        # Remove trailing colon if present
+        unit_title = unit_title.rstrip(':')
         safe_unit_title = "".join(c if c.isalnum() or c in (' ', '-') else '-' for c in unit_title).strip()
         safe_unit_title = '-'.join(safe_unit_title.split())  # Replace spaces with hyphens
+        # Remove any trailing hyphens and empty strings
+        safe_unit_title = safe_unit_title.strip('-')
+        if not safe_unit_title:  # Fallback if title is empty
+            safe_unit_title = f"Unit-{unit_idx}"
         unit_dir = course_dir / f"unit_{unit_idx}_{safe_unit_title}"
         unit_dir.mkdir(exist_ok=True)
         
@@ -887,7 +1080,11 @@ def interactive_mode(fetcher: PESUPDFFetcher, course_code: Optional[str] = None)
         safe_name = "".join(c if c.isalnum() or c in (' ', '-') else '-' for c in clean_name).strip()
         safe_name = '-'.join(safe_name.split())  # Replace spaces with hyphens
         
-        course_dir = Path(f"course{course_id}_{subject_code}-{safe_name}")
+        # Load base directory from environment variable or use default
+        base_dir_env = os.getenv("BASE_DIR", "pesu-viewer/public/courses")
+        base_dir = Path(__file__).parent / base_dir_env
+        base_dir.mkdir(parents=True, exist_ok=True)
+        course_dir = base_dir / f"course{course_id}_{subject_code}-{safe_name}"
         course_dir.mkdir(exist_ok=True)
         
         # If course_code was provided via CLI, automatically download all materials
