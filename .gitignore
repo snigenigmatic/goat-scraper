@@ -1,7 +1,6 @@
 .DS_Store
 *.env
 *.html
-*.json
 *.log
 *.pdf
 *.pptx
@@ -9,3 +8,4 @@
 *.ppt
 *.pyc
 *.docx
+frontend/public/courses/

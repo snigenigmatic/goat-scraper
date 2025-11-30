@@ -16,13 +16,14 @@ import logging
 import argparse
 import subprocess
 import shutil
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, List, Any, Tuple
 import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
 from pypdf import PdfWriter
 from colorama import Fore, Style, init as colorama_init
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 # Initialize colorama for cross-platform colored output
 colorama_init(autoreset=True)
@@ -1094,61 +1095,87 @@ def batch_download_all(fetcher: PESUPDFFetcher, course_id: str, course_name: str
                 continue
             print(f"  Filtering: {len(classes_to_download)}/{len(classes)} classes")
         
-        # Download each class with progress bar
-        with tqdm(total=len(classes_to_download), desc="  Downloading", unit="file", leave=False, 
+        # Helper function for parallel downloads
+        def download_class(class_data: Tuple[int, Dict]) -> Tuple[Dict, List[Path]]:
+            """Download a single class and return class info and downloaded files."""
+            class_idx, cls = class_data
+            class_id = cls['id']
+            class_name = cls['className']
+            
+            # Safe filename with zero-padded numbering
+            safe_name = "".join(c for c in class_name if c.isalnum() or c in (' ', '-', '_')).strip()[:50]
+            padded_num = str(class_idx).zfill(2)  # 01, 02, 03, etc.
+            output_path = unit_dir / f"{padded_num}_{safe_name}.pdf"
+            
+            class_info = {
+                "class_number": class_idx,
+                "class_id": class_id,
+                "class_name": class_name,
+                "files": [],
+                "status": "failed"
+            }
+            
+            # download_pdf now returns a list of downloaded file paths
+            downloaded_files = fetcher.download_pdf(course_id, class_id, output_path, class_name)
+            
+            return class_info, downloaded_files
+        
+        # Download classes in parallel with progress bar
+        max_workers = 5  # Limit concurrent downloads to avoid overwhelming the server
+        with tqdm(total=len(classes_to_download), desc="  Downloading", unit="file", leave=False,
                   bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}]") as pbar:
-            for class_idx, cls in enumerate(classes_to_download, 1):
-                class_id = cls['id']
-                class_name = cls['className']
-                
-                # Safe filename with zero-padded numbering
-                safe_name = "".join(c for c in class_name if c.isalnum() or c in (' ', '-', '_')).strip()[:50]
-                padded_num = str(class_idx).zfill(2)  # 01, 02, 03, etc.
-                output_path = unit_dir / f"{padded_num}_{safe_name}.pdf"
-                
-                pbar.set_postfix_str(f"{class_name[:40]}..." if len(class_name) > 40 else class_name)
-                
-                class_info = {
-                    "class_number": class_idx,
-                    "class_id": class_id,
-                    "class_name": class_name,
-                    "files": [],  # Changed to list to support multiple files
-                    "status": "failed"
+            
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                # Submit all download tasks
+                future_to_class = {
+                    executor.submit(download_class, (idx, cls)): (idx, cls)
+                    for idx, cls in enumerate(classes_to_download, 1)
                 }
                 
-                # download_pdf now returns a list of downloaded file paths
-                downloaded_files = fetcher.download_pdf(course_id, class_id, output_path, class_name)
-                
-                if downloaded_files:
-                    total_downloaded += len(downloaded_files)
-                    unit_pdfs.extend(downloaded_files)
-                    
-                    # Update class info with all downloaded files
-                    for actual_file in downloaded_files:
-                        if actual_file.exists():
-                            class_info["files"].append({
-                                "filename": actual_file.name,
-                                "file_size": actual_file.stat().st_size,
-                                "file_type": actual_file.suffix.lstrip('.')
-                            })
-                    
-                    class_info["status"] = "success"
-                    unit_summary["total_files"] += len(downloaded_files)
-                    
-                    file_count_msg = f" ({len(downloaded_files)} files)" if len(downloaded_files) > 1 else ""
-                    pbar.write(f"    {Fore.GREEN}✓{Style.RESET_ALL} {class_name}{file_count_msg}")
-                else:
-                    logger.error(f"FAILURE [batch_download]: Failed to download class")
-                    logger.error(f"  Unit: {unit_name}")
-                    logger.error(f"  Class: {class_name}")
-                    logger.error(f"  Class ID: {class_id}")
-                    logger.error(f"  Expected Output: {output_path}")
-                    total_failed += 1
-                    unit_summary["failed_files"] += 1
-                    pbar.write(f"    {Fore.RED}✗{Style.RESET_ALL} {class_name}")
-                
-                unit_summary["classes"].append(class_info)
-                pbar.update(1)
+                # Process completed downloads as they finish
+                for future in as_completed(future_to_class):
+                    try:
+                        class_info, downloaded_files = future.result()
+                        
+                        class_name = class_info["class_name"]
+                        pbar.set_postfix_str(f"{class_name[:40]}..." if len(class_name) > 40 else class_name)
+                        
+                        if downloaded_files:
+                            total_downloaded += len(downloaded_files)
+                            unit_pdfs.extend(downloaded_files)
+                            
+                            # Update class info with all downloaded files
+                            for actual_file in downloaded_files:
+                                if actual_file.exists():
+                                    class_info["files"].append({
+                                        "filename": actual_file.name,
+                                        "file_size": actual_file.stat().st_size,
+                                        "file_type": actual_file.suffix.lstrip('.')
+                                    })
+                            
+                            class_info["status"] = "success"
+                            unit_summary["total_files"] += len(downloaded_files)
+                            
+                            file_count_msg = f" ({len(downloaded_files)} files)" if len(downloaded_files) > 1 else ""
+                            pbar.write(f"    {Fore.GREEN}✓{Style.RESET_ALL} {class_name}{file_count_msg}")
+                        else:
+                            logger.error(f"FAILURE [batch_download]: Failed to download class")
+                            logger.error(f"  Unit: {unit_name}")
+                            logger.error(f"  Class: {class_name}")
+                            logger.error(f"  Class ID: {class_info['class_id']}")
+                            total_failed += 1
+                            unit_summary["failed_files"] += 1
+                            pbar.write(f"    {Fore.RED}✗{Style.RESET_ALL} {class_name}")
+                        
+                        unit_summary["classes"].append(class_info)
+                        pbar.update(1)
+                        
+                    except Exception as e:
+                        idx, cls = future_to_class[future]
+                        logger.error(f"Exception downloading class {idx}: {e}")
+                        total_failed += 1
+                        unit_summary["failed_files"] += 1
+                        pbar.update(1)
         
         # Merge PDFs for this unit (non-PDF files will be skipped) unless --no-merge flag is set
         if unit_pdfs and not skip_merge:
@@ -1217,6 +1244,52 @@ def interactive_mode(fetcher: PESUPDFFetcher, course_code: Optional[str] = None,
         
         # If course_code provided via CLI flag, use it directly
         if course_code:
+            # Check if it's a regex pattern (used internally when --pattern is passed)
+            if course_code.startswith("PATTERN:"):
+                import re
+                pattern = course_code[8:]  # Remove "PATTERN:" prefix
+                try:
+                    regex = re.compile(pattern, re.IGNORECASE)
+                    matches = [s for s in subjects if regex.search(s["subjectCode"]) or regex.search(s.get("subjectName", ""))]
+                    
+                    if not matches:
+                        print(f"\n❌ No courses found matching pattern '{pattern}'")
+                        return
+                    
+                    print(f"\n✓ Found {len(matches)} course(s) matching pattern '{pattern}'")
+                    for match in matches:
+                        print(f"  - {match['subjectCode']}: {match['subjectName']}")
+                    
+                    # Download all matching courses
+                    for idx, match in enumerate(matches, 1):
+                        print(f"\n{'='*60}")
+                        print(f"[{idx}/{len(matches)}] Processing: {match['subjectCode']}")
+                        print(f"{'='*60}")
+                        
+                        course_id = match["id"]
+                        course_name = match["subjectName"]
+                        subject_code = match["subjectCode"]
+                        
+                        # Create course directory
+                        clean_name = course_name.split('-', 1)[-1].strip() if '-' in course_name else course_name
+                        safe_name = "".join(c if c.isalnum() or c in (' ', '-') else '-' for c in clean_name).strip()
+                        safe_name = '-'.join(safe_name.split())
+                        
+                        base_dir_env = output_dir or os.getenv("BASE_DIR", "frontend/public/courses")
+                        base_dir = Path(__file__).parent / base_dir_env
+                        base_dir.mkdir(parents=True, exist_ok=True)
+                        course_dir = base_dir / f"course{course_id}_{subject_code}-{safe_name}"
+                        course_dir.mkdir(exist_ok=True)
+                        
+                        # Download all materials for this course
+                        batch_download_all(fetcher, course_id, course_name, course_dir, unit_filter, class_filter, skip_merge)
+                    
+                    return
+                    
+                except re.error as e:
+                    print(f"\n❌ Invalid regex pattern: {e}")
+                    return
+            
             # Try to match by ID first, then by subject code
             course_match = next((s for s in subjects if s["id"] == course_code or s["subjectCode"] == course_code), None)
             if not course_match:
@@ -1482,6 +1555,11 @@ Examples:
   # Download all materials for a course
   python main.py -c UE23CS343AB2
   
+  # Download all courses matching a pattern (regex)
+  python main.py -p "UE23CS3.*"
+  python main.py -p "UE23CS341.*"
+  python main.py -p ".*BlockChain"
+  
   # Download specific units only
   python main.py -c UE23CS343AB2 -u 1,3
   
@@ -1499,6 +1577,11 @@ Examples:
         "-c", "--course-code",
         type=str,
         help="Course code/ID to download directly (skips interactive selection)"
+    )
+    parser.add_argument(
+        "-p", "--pattern",
+        type=str,
+        help="Regex pattern to match course codes (e.g., 'UE23CS3.*' or 'UE23CS341.*'). Downloads all matching courses."
     )
     parser.add_argument(
         "-u", "--units",
@@ -1601,8 +1684,15 @@ Examples:
     try:
         fetcher.login()
         
+        # Handle pattern flag by converting it to a special course_code format
+        course_code_arg = args.course_code
+        if args.pattern:
+            if args.course_code:
+                print("⚠️  Warning: Both --course-code and --pattern provided. Using --pattern.")
+            course_code_arg = f"PATTERN:{args.pattern}"
+        
         # Run interactive mode with filters
-        interactive_mode(fetcher, args.course_code, unit_filter, class_filter, 
+        interactive_mode(fetcher, course_code_arg, unit_filter, class_filter, 
                         args.list_units, args.no_merge, args.output)
         
     except AuthenticationError as e:

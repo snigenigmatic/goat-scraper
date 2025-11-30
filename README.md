@@ -5,7 +5,9 @@ Automatically download course materials (slides, PDFs) from PESU Academy.
 ## Features
 
 - Fuzzy search through 16,000+ courses using `fzf`
+- Regex pattern matching to download multiple courses at once
 - Batch download all materials for a course
+- Automatic PDF merging per unit and ESA (all units combined)
 - Organized directory structure by units
 - Login with credentials from `.env` file
 - Interactive mode for selective downloads
@@ -34,7 +36,28 @@ PESU_PASSWORD=your_password_here
 ### Run the fetcher
 
 ```bash
+# Download a specific course
 uv run main.py -c COURSE_CODE
+
+# Download all courses matching a regex pattern
+uv run main.py -p 'UE23CS3.*'           # All UE23 CS 3rd year courses
+uv run main.py -p 'UE23CS341.*'         # All courses starting with UE23CS341
+uv run main.py -p 'UE23CS342AA[1-4]'    # Elective bucket AA1 to AA4
+uv run main.py -p 'UE23CS342BA.*'       # All BA bucket electives
+uv run main.py -p 'UE23CS343BB.*'       # All BB bucket electives
+uv run main.py -p '.*BlockChain'        # All courses with "BlockChain" in name
+
+# Download specific units only
+uv run main.py -c UE23CS343AB2 -u 1,3   # Download units 1 and 3
+
+# Download with class range filter
+uv run main.py -c UE23CS343AB2 -u 2 --class-range 1-5
+
+# Skip PDF merging (keep only individual files)
+uv run main.py -c UE23CS343AB2 --no-merge
+
+# List units without downloading
+uv run main.py -c UE23CS343AB2 --list-units
 ```
 
 ### Workflow
@@ -48,17 +71,22 @@ uv run main.py -c COURSE_CODE
 ### Output Structure
 
 ```
-course_20972/
-  unit_1/
-   01_Introduction.pdf
-   02_Parser.pdf
-   03_Lexical_Analysis.pdf
-   ...
-  unit_2/
-   01_...pdf
-   ...
-  units.json
-  unit_*_classes.json
+frontend/public/courses/
+  course20972_UE23CS341A-Software-Engineering/
+    unit_1_Introduction/
+      01_Introduction.pdf
+      02_Requirements.pdf
+      ...
+      UE23CS341A-Software-Engineering_u1_merged.pdf  # All unit 1 PDFs combined
+    unit_2_Design/
+      01_...pdf
+      ...
+      UE23CS341A-Software-Engineering_u2_merged.pdf  # All unit 2 PDFs combined
+    unit_3_.../
+    unit_4_.../
+    UE23CS341A-Software-Engineering_ESA.pdf          # All 4 units combined (ESA prep)
+    UE23CS341A-Software-Engineering_course_summary.json
+    UE23CS341A-Software-Engineering_failures.log     # Only created if errors occur
 ```
 
 ## How it Works
