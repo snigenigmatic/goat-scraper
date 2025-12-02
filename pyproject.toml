@@ -12,6 +12,5 @@ dependencies = [
     "colorama>=0.4.6",
     "tqdm>=4.66.0",
     "uvicorn[standard]>=0.38.0",
+    "fastapi>=0.123.5",
 ]
-
-

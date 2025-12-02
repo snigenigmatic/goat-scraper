@@ -31,17 +31,21 @@ import { useMemo, useEffect } from "react";
 
 export default function StudyPage() {
   const { items, removeItem, clearCart } = useStudyCart();
-  const { isFileComplete, isUnitComplete } = useProgress();
+  const { isFileComplete, isUnitComplete, toggleFileComplete } = useProgress();
   const [activeIndex, setActiveIndex] = useState(0);
   const [scale, setScale] = useState(100);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   
+  // Brainrot mode only available with PRO=true in .env
+  const isPro = process.env.NEXT_PUBLIC_PRO === "true";
+  const [showSubwaySurfer, setShowSubwaySurfer] = useState(isPro);
+
   // Get the current course ID from active item
   const currentCourseId = items[activeIndex]?.courseId || "global";
   
-  // WebSocket sync and leaderboard
-  const { leaderboard, username, isConnected } = useProgressSync(currentCourseId);
+  // WebSocket sync and leaderboard - must be called before any early returns
+  const { leaderboard, username, isConnected, requestLeaderboardUpdate } = useProgressSync(currentCourseId);
   
   // Get current user ID
   useEffect(() => {
@@ -50,10 +54,6 @@ export default function StudyPage() {
       setCurrentUserId(userId);
     }
   }, []);
-  
-  // Brainrot mode only available with PRO=true in .env
-  const isPro = process.env.NEXT_PUBLIC_PRO === "true";
-  const [showSubwaySurfer, setShowSubwaySurfer] = useState(isPro);
 
   const activeItem = items[activeIndex];
 
@@ -61,8 +61,48 @@ export default function StudyPage() {
   const handleZoomOut = () => setScale((prev) => Math.max(prev - 25, 50));
 
   const goToPrev = () => setActiveIndex((prev) => Math.max(0, prev - 1));
-  const goToNext = () => setActiveIndex((prev) => Math.min(items.length - 1, prev + 1));
+  const goToNext = () => {
+    // Mark current PDF as complete before moving to next
+    if (activeItem?.courseId && activeItem?.fileKey) {
+      const isComplete = isFileComplete(activeItem.courseId, activeItem.fileKey);
+      if (!isComplete) {
+        toggleFileComplete(activeItem.courseId, activeItem.fileKey);
+      }
+    }
+    // Request fresh leaderboard data from server
+    requestLeaderboardUpdate();
+    setActiveIndex((prev) => Math.min(items.length - 1, prev + 1));
+  };
 
+  // Memoize grouped items - MUST be before early return
+  const groupedItems = useMemo(() => {
+    const groups: Record<number, typeof items> = {} as any;
+    items.forEach((it) => {
+      groups[it.unitNumber] = groups[it.unitNumber] || [];
+      groups[it.unitNumber].push(it);
+    });
+    const sortedUnits = Object.keys(groups)
+      .map((k) => Number(k))
+      .sort((a, b) => a - b);
+
+    let globalIndex = 0;
+    return sortedUnits.map((unitNum) => {
+      const group = groups[unitNum];
+      const unitComplete = group[0]?.courseId ? isUnitComplete(group[0].courseId!, unitNum) : false;
+      const itemsWithIndex = group.map((item) => {
+        const index = globalIndex++;
+        const isActive = index === activeIndex;
+        const isComplete =
+          item.courseId && item.fileKey
+            ? isFileComplete(item.courseId, item.fileKey)
+            : false;
+        return { item, index, isActive, isComplete };
+      });
+      return { unitNum, group, unitComplete, items: itemsWithIndex };
+    });
+  }, [items, activeIndex, isFileComplete, isUnitComplete]);
+
+  // Early return AFTER all hooks are called
   if (items.length === 0) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/50 to-indigo-50 dark:from-[#0f1219] dark:via-[#111827] dark:to-[#0f172a] flex items-center justify-center">
@@ -121,86 +161,57 @@ export default function StudyPage() {
         {/* PDF List */}
         <ScrollArea className="flex-1">
           <div className="p-2 space-y-2">
-            {useMemo(() => {
-              // group items by unit
-              const groups: Record<number, typeof items> = {} as any;
-              items.forEach((it) => {
-                groups[it.unitNumber] = groups[it.unitNumber] || [];
-                groups[it.unitNumber].push(it);
-              });
-              const sortedUnits = Object.keys(groups)
-                .map((k) => Number(k))
-                .sort((a, b) => a - b);
-
-              let globalIndex = 0;
-              return (
-                <>
-                  {sortedUnits.map((unitNum) => {
-                    const group = groups[unitNum];
-                    const unitComplete = group[0]?.courseId ? isUnitComplete(group[0].courseId!, unitNum) : false;
-                    return (
-                      <div key={`unit-${unitNum}`}>
-                        <div className="px-2 py-1 text-xs text-slate-400 flex items-center justify-between">
-                          <span>Unit {unitNum}</span>
-                          {unitComplete && <Badge variant="secondary">Unit Complete</Badge>}
-                        </div>
-                        <div className="space-y-1">
-                          {group.map((item) => {
-                            const index = globalIndex++;
-                            const isActive = index === activeIndex;
-                            const isComplete =
-                              item.courseId && item.fileKey
-                                ? isFileComplete(item.courseId, item.fileKey)
-                                : false;
-                            return (
-                              <div
-                                key={item.id}
-                                className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer group transition-colors min-w-0 ${
-                                  isActive
-                                    ? "bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800"
-                                    : "hover:bg-slate-100 dark:hover:bg-slate-800"
-                                }`}
-                                onClick={() => setActiveIndex(index)}
-                              >
-                                <div className="relative shrink-0">
-                                  <FileText className="h-5 w-5 text-red-500" />
-                                  <Badge
-                                    className="absolute -top-2 -left-2 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
-                                    variant={isActive ? "default" : "secondary"}
-                                  >
-                                    {index + 1}
-                                  </Badge>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className={`text-sm font-medium truncate ${isComplete ? 'text-green-400' : ''}`}>
-                                    {item.title}
-                                  </p>
-                                  <p className="text-xs text-slate-500 truncate">Unit {item.unitNumber}</p>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    removeItem(item.id);
-                                    if (index <= activeIndex && activeIndex > 0) {
-                                      setActiveIndex(activeIndex - 1);
-                                    }
-                                  }}
-                                >
-                                  <X className="h-3 w-3" />
-                                </Button>
-                              </div>
-                            );
-                          })}
-                        </div>
+            {groupedItems.map(({ unitNum, unitComplete, items: unitItems }) => (
+              <div key={`unit-${unitNum}`}>
+                <div className="px-2 py-1 text-xs text-slate-400 flex items-center justify-between">
+                  <span>Unit {unitNum}</span>
+                  {unitComplete && <Badge variant="secondary">Unit Complete</Badge>}
+                </div>
+                <div className="space-y-1">
+                  {unitItems.map(({ item, index, isActive, isComplete }) => (
+                    <div
+                      key={item.id}
+                      className={`flex items-center gap-2 p-3 rounded-lg cursor-pointer group transition-colors min-w-0 ${
+                        isActive
+                          ? "bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800"
+                          : "hover:bg-slate-100 dark:hover:bg-slate-800"
+                      }`}
+                      onClick={() => setActiveIndex(index)}
+                    >
+                      <div className="relative shrink-0">
+                        <FileText className="h-5 w-5 text-red-500" />
+                        <Badge
+                          className="absolute -top-2 -left-2 h-4 w-4 p-0 flex items-center justify-center text-[10px]"
+                          variant={isActive ? "default" : "secondary"}
+                        >
+                          {index + 1}
+                        </Badge>
                       </div>
-                    );
-                  })}
-                </>
-              );
-            }, [items, activeIndex, removeItem, isFileComplete, isUnitComplete])}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm font-medium truncate ${isComplete ? 'text-green-400' : ''}`}>
+                          {item.title}
+                        </p>
+                        <p className="text-xs text-slate-500 truncate">Unit {item.unitNumber}</p>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          removeItem(item.id);
+                          if (index <= activeIndex && activeIndex > 0) {
+                            setActiveIndex(activeIndex - 1);
+                          }
+                        }}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </ScrollArea>
       </div>

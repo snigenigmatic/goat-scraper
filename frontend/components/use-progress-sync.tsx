@@ -23,6 +23,7 @@ interface UseProgressSyncReturn {
   isConnected: boolean;
   currentUserRank: number | null;
   updateUsername: (newUsername: string) => void;
+  requestLeaderboardUpdate: () => void;
 }
 
 // Generate a random anonymous username
@@ -232,6 +233,16 @@ export function useProgressSync(courseId: string): UseProgressSyncReturn {
     }
   }, [sendProgressUpdate]);
 
+  // Request immediate leaderboard update
+  const requestLeaderboardUpdate = useCallback(() => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && courseId) {
+      wsRef.current.send(JSON.stringify({
+        type: "request_leaderboard",
+        courseId,
+      }));
+    }
+  }, [courseId]);
+
   // Calculate current user's rank
   const currentUserRank = userId 
     ? leaderboard.findIndex(entry => entry.userId === userId) + 1 
@@ -243,5 +254,6 @@ export function useProgressSync(courseId: string): UseProgressSyncReturn {
     isConnected,
     currentUserRank: currentUserRank !== null && currentUserRank > 0 ? currentUserRank : null,
     updateUsername,
+    requestLeaderboardUpdate,
   };
 }

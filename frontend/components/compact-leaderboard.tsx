@@ -71,7 +71,7 @@ export function CompactLeaderboard({ entries, currentUserId, username }: Compact
   if (topEntries.length === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 px-2 py-1 bg-gradient-to-r from-slate-700/40 to-slate-800/40 dark:from-slate-800/40 dark:to-slate-900/40 border-l border-slate-600/50 dark:border-slate-700/50">
+    <div className="flex items-center gap-1.5 px-2 py-2 bg-gradient-to-r from-slate-700/40 to-slate-800/40 dark:from-slate-800/40 dark:to-slate-900/40 border-l border-slate-600/50 dark:border-slate-700/50">
       {/* Race Icon */}
       <div className="flex items-center gap-1 pr-1.5 border-r border-slate-600/50 dark:border-slate-700/50">
         <Zap className="h-3 w-3 text-yellow-400" />
@@ -88,21 +88,21 @@ export function CompactLeaderboard({ entries, currentUserId, username }: Compact
           return (
             <div
               key={entry.userId}
-              className="flex items-center gap-1 group relative"
+              className="flex items-center gap-2 group relative"
             >
               {/* Racer avatar */}
               <div
-                className={`h-5 w-5 rounded-full flex items-center justify-center transition-all duration-300 ${style.gradient} ${style.className}`}
+                className={`h-6 w-6 rounded-full flex items-center justify-center transition-all duration-300 ${style.gradient} ${style.className}`}
                 title={`${entry.username} - ${entry.percentage}%`}
               >
-                <span className={`text-[9px] font-bold ${style.text}`}>
+                <span className={`text-[10px] font-bold ${style.text}`}>
                   {rank}
                 </span>
               </div>
 
-              {/* Username and progress (shows on hover or if current user) */}
-              <div className={`flex flex-col transition-all ${isCurrentUser ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
-                <span className={`text-[9px] font-medium whitespace-nowrap ${isCurrentUser ? 'text-blue-200' : 'text-slate-300'}`}>
+              {/* Username and progress */}
+              <div className={`flex flex-col px-1 rounded ${isCurrentUser ? 'bg-blue-500/20 ring-1 ring-blue-500/50' : ''}`}>
+                <span className={`text-[10px] font-semibold whitespace-nowrap ${isCurrentUser ? 'text-blue-100' : 'text-slate-200'}`}>
                   {entry.username}
                 </span>
                 <div className="flex items-center gap-0.5">
@@ -122,7 +122,7 @@ export function CompactLeaderboard({ entries, currentUserId, username }: Compact
                       style={{ width: `${entry.percentage}%` }}
                     />
                   </div>
-                  <span className="text-[8px] font-semibold text-slate-300">
+                  <span className={`text-[8px] font-semibold ${isCurrentUser ? 'text-blue-200' : 'text-slate-300'}`}>
                     {entry.percentage}%
                   </span>
                 </div>
