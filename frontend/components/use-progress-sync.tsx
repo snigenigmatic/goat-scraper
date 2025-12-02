@@ -24,6 +24,7 @@ interface UseProgressSyncReturn {
   currentUserRank: number | null;
   updateUsername: (newUsername: string) => void;
   requestLeaderboardUpdate: () => void;
+  syncStudyItems: (fileKeys: string[]) => void;
 }
 
 // Generate a random anonymous username
@@ -243,6 +244,17 @@ export function useProgressSync(courseId: string): UseProgressSyncReturn {
     }
   }, [courseId]);
 
+  // Sync study items (files in study bucket) to server
+  const syncStudyItems = useCallback((fileKeys: string[]) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN && courseId) {
+      wsRef.current.send(JSON.stringify({
+        type: "sync_study_items",
+        courseId,
+        fileKeys,
+      }));
+    }
+  }, [courseId]);
+
   // Calculate current user's rank
   const currentUserRank = userId 
     ? leaderboard.findIndex(entry => entry.userId === userId) + 1 
@@ -255,5 +267,6 @@ export function useProgressSync(courseId: string): UseProgressSyncReturn {
     currentUserRank: currentUserRank !== null && currentUserRank > 0 ? currentUserRank : null,
     updateUsername,
     requestLeaderboardUpdate,
+    syncStudyItems,
   };
 }

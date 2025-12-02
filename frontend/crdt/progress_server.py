@@ -22,7 +22,7 @@ app.add_middleware(
 # Store active connections: {user_id: websocket}
 active_connections: Dict[str, WebSocket] = {}
 
-# Store user progress: {user_id: {courseId: {fileKey: bool}, username: str, lastUpdate: timestamp}}
+# Store user progress: {user_id: {courseId: {fileKey: bool}, username: str, lastUpdate: timestamp, study_items: {courseId: [fileKeys]}}}
 user_progress: Dict[str, dict] = {}
 
 
@@ -39,7 +39,8 @@ class ConnectionManager:
             user_progress[user_id] = {
                 "progress": {},
                 "username": "",
-                "lastUpdate": datetime.now().isoformat()
+                "lastUpdate": datetime.now().isoformat(),
+                "study_items": {}
             }
 
     def disconnect(self, user_id: str):
@@ -72,10 +73,16 @@ class ConnectionManager:
         leaderboard = []
         
         for user_id, data in user_progress.items():
-            if course_id in data.get("progress", {}):
-                course_progress = data["progress"][course_id]
-                completed_count = sum(1 for v in course_progress.values() if v)
-                total_count = len(course_progress)
+            # Get the list of study items (fileKeys) for this course
+            study_items = data.get("study_items", {}).get(course_id, [])
+            
+            # Only include users who have items in their study bucket for this course
+            if study_items:
+                course_progress = data.get("progress", {}).get(course_id, {})
+                
+                # Calculate completion based ONLY on items in study bucket
+                completed_count = sum(1 for file_key in study_items if course_progress.get(file_key, False))
+                total_count = len(study_items)
                 percentage = (completed_count / total_count * 100) if total_count > 0 else 0
                 
                 leaderboard.append({
@@ -174,6 +181,28 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                         "type": "username_updated",
                         "username": username
                     })
+            
+            elif data["type"] == "sync_study_items":
+                course_id = data["courseId"]
+                file_keys = data["fileKeys"]  # List of fileKeys in study bucket
+                
+                if user_id not in user_progress:
+                    user_progress[user_id] = {"progress": {}, "username": "Anonymous", "study_items": {}}
+                
+                if "study_items" not in user_progress[user_id]:
+                    user_progress[user_id]["study_items"] = {}
+                
+                user_progress[user_id]["study_items"][course_id] = file_keys
+                user_progress[user_id]["lastUpdate"] = datetime.now().isoformat()
+                
+                # Broadcast updated leaderboard with corrected percentages
+                await manager.broadcast_leaderboard(course_id)
+                
+                await websocket.send_json({
+                    "type": "study_items_synced",
+                    "courseId": course_id,
+                    "count": len(file_keys)
+                })
     
     except WebSocketDisconnect:
         manager.disconnect(user_id)
