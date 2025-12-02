@@ -25,7 +25,9 @@ import {
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { useProgress } from "@/components/progress-provider";
-import { useMemo } from "react";
+import { useProgressSync } from "@/components/use-progress-sync";
+import { CompactLeaderboard } from "@/components/compact-leaderboard";
+import { useMemo, useEffect } from "react";
 
 export default function StudyPage() {
   const { items, removeItem, clearCart } = useStudyCart();
@@ -33,6 +35,21 @@ export default function StudyPage() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [scale, setScale] = useState(100);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  // Get the current course ID from active item
+  const currentCourseId = items[activeIndex]?.courseId || "global";
+  
+  // WebSocket sync and leaderboard
+  const { leaderboard, username, isConnected } = useProgressSync(currentCourseId);
+  
+  // Get current user ID
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userId = localStorage.getItem("progress-user-id");
+      setCurrentUserId(userId);
+    }
+  }, []);
   
   // Brainrot mode only available with PRO=true in .env
   const isPro = process.env.NEXT_PUBLIC_PRO === "true";
@@ -203,74 +220,85 @@ export default function StudyPage() {
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Toolbar */}
-        <div className="h-14 px-4 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between shrink-0">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={goToPrev}
-                disabled={activeIndex === 0}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium w-16 text-center">
-                {activeIndex + 1} / {items.length}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8"
-                onClick={goToNext}
-                disabled={activeIndex === items.length - 1}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+        {/* Toolbar with integrated race tracker */}
+        <div className="border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="h-14 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-1">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={goToPrev}
+                  disabled={activeIndex === 0}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium w-16 text-center">
+                  {activeIndex + 1} / {items.length}
+                </span>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8"
+                  onClick={goToNext}
+                  disabled={activeIndex === items.length - 1}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
+              <p className="text-sm font-medium truncate text-slate-700 dark:text-slate-300">
+                {activeItem?.title}
+              </p>
             </div>
-            <div className="h-6 w-px bg-slate-200 dark:bg-slate-700" />
-            <p className="text-sm font-medium truncate text-slate-700 dark:text-slate-300">
-              {activeItem?.title}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-md px-2 py-1">
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleZoomOut}
-                disabled={scale <= 50}
-              >
-                <ZoomOut className="h-4 w-4" />
-              </Button>
-              <span className="text-xs font-medium w-12 text-center">{scale}%</span>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={handleZoomIn}
-                disabled={scale >= 200}
-              >
-                <ZoomIn className="h-4 w-4" />
-              </Button>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-md px-2 py-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={handleZoomOut}
+                  disabled={scale <= 50}
+                >
+                  <ZoomOut className="h-4 w-4" />
+                </Button>
+                <span className="text-xs font-medium w-12 text-center">{scale}%</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7"
+                  onClick={handleZoomIn}
+                  disabled={scale >= 200}
+                >
+                  <ZoomIn className="h-4 w-4" />
+                </Button>
+              </div>
+              {activeItem && (
+                <>
+                  <a href={activeItem.url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="outline" size="icon" className="h-8 w-8">
+                      <Maximize2 className="h-4 w-4" />
+                    </Button>
+                  </a>
+                  <a href={activeItem.url} download>
+                    <Button variant="outline" size="icon" className="h-8 w-8">
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </a>
+                </>
+              )}
             </div>
-            {activeItem && (
-              <>
-                <a href={activeItem.url} target="_blank" rel="noopener noreferrer">
-                  <Button variant="outline" size="icon" className="h-8 w-8">
-                    <Maximize2 className="h-4 w-4" />
-                  </Button>
-                </a>
-                <a href={activeItem.url} download>
-                  <Button variant="outline" size="icon" className="h-8 w-8">
-                    <Download className="h-4 w-4" />
-                  </Button>
-                </a>
-              </>
-            )}
           </div>
+          
+          {/* Integrated race tracker timeline */}
+          {isConnected && leaderboard.length > 0 && (
+            <CompactLeaderboard
+              entries={leaderboard}
+              currentUserId={currentUserId}
+              username={username}
+            />
+          )}
         </div>
 
         {/* Queue progress */}

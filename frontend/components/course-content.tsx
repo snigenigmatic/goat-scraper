@@ -13,6 +13,8 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import { useProgress } from "@/components/progress-provider";
 import { useStudyCart } from "@/components/study-cart-provider";
+import { useProgressSync } from "@/components/use-progress-sync";
+import { Leaderboard } from "@/components/leaderboard";
 import { CourseSummary, ClassInfo } from "@/types/course";
 import {
   FileText,
@@ -64,6 +66,17 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
   const { progress } = useProgress();
   const fileRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [openUnits, setOpenUnits] = useState<string[]>(["unit-1"]);
+  
+  // WebSocket sync and leaderboard
+  const { leaderboard, username, isConnected, currentUserRank, updateUsername } = useProgressSync(courseId);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const userId = localStorage.getItem("progress-user-id");
+      setCurrentUserId(userId);
+    }
+  }, []);
 
   // Generate all file keys for progress tracking
   const allFileKeys: string[] = [];
@@ -132,63 +145,79 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
 
   return (
     <>
-      {/* Overall Progress Card */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <BookOpen className="h-5 w-5" />
-            Your Progress
-          </CardTitle>
-          <CardDescription>
-            Track your learning progress through the course materials
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-600 dark:text-slate-400">
-                {courseProgress.completed} of {courseProgress.total} materials completed
-              </span>
-              <span className="font-semibold">
-                {courseProgress.percentage}%
-              </span>
-            </div>
-            <Progress value={courseProgress.percentage} className="h-3" />
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
-                    {summary.units.map((unit) => {
-                const unitFileKeys = unit.classes
-                  .filter((cls) => cls.filename && cls.status === "success")
-                  .map((cls) => `${unit.unit_number}-${cls.class_id}`);
-                const unitProgress = getUnitProgress(
-                  courseId,
-                  unit.unit_number,
-                  unitFileKeys.length,
-                  unitFileKeys
-                );
-                return (
-                  <div
-                    key={unit.unit_number}
-                    className="p-3 rounded-lg bg-slate-100/80 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50"
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Badge variant="outline" className="text-xs">
-                        Unit {unit.unit_number}
-                      </Badge>
-                      {unitProgress.percentage === 100 && (
-                        <CheckCircle2 className="h-4 w-4 text-green-500" />
-                      )}
-                    </div>
-                    <Progress value={unitProgress.percentage} className="h-1.5" />
-                    <p className="text-xs text-slate-500 mt-1">
-                      {unitProgress.completed}/{unitProgress.total}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
+        {/* Overall Progress Card */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <BookOpen className="h-5 w-5" />
+                Your Progress
+              </CardTitle>
+              <CardDescription>
+                Track your learning progress through the course materials
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-slate-600 dark:text-slate-400">
+                    {courseProgress.completed} of {courseProgress.total} materials completed
+                  </span>
+                  <span className="font-semibold">
+                    {courseProgress.percentage}%
+                  </span>
+                </div>
+                <Progress value={courseProgress.percentage} className="h-3" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                  {summary.units.map((unit) => {
+                    const unitFileKeys = unit.classes
+                      .filter((cls) => cls.filename && cls.status === "success")
+                      .map((cls) => `${unit.unit_number}-${cls.class_id}`);
+                    const unitProgress = getUnitProgress(
+                      courseId,
+                      unit.unit_number,
+                      unitFileKeys.length,
+                      unitFileKeys
+                    );
+                    return (
+                      <div
+                        key={unit.unit_number}
+                        className="p-3 rounded-lg bg-slate-100/80 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50"
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="outline" className="text-xs">
+                            Unit {unit.unit_number}
+                          </Badge>
+                          {unitProgress.percentage === 100 && (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          )}
+                        </div>
+                        <Progress value={unitProgress.percentage} className="h-1.5" />
+                        <p className="text-xs text-slate-500 mt-1">
+                          {unitProgress.completed}/{unitProgress.total}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Leaderboard */}
+        <div className="lg:col-span-1">
+          <Leaderboard
+            entries={leaderboard}
+            currentUserId={currentUserId}
+            currentUserRank={currentUserRank}
+            isConnected={isConnected}
+            username={username}
+            onUpdateUsername={updateUsername}
+          />
+        </div>
+      </div>
 
       {/* Merged PDF Download */}
       <Card className="mb-8">

@@ -30,6 +30,13 @@ const ProgressContext = createContext<ProgressContextType | undefined>(undefined
 
 const STORAGE_KEY = "course-progress";
 
+// Helper to send progress updates to WebSocket server
+const sendProgressToServer = (courseId: string, fileKey: string, isComplete: boolean) => {
+  if (typeof window !== "undefined" && (window as any).__sendProgressUpdate) {
+    (window as any).__sendProgressUpdate(fileKey, isComplete);
+  }
+};
+
 export function ProgressProvider({ children }: { children: ReactNode }) {
   const [progress, setProgress] = useState<ProgressData>({});
   const [isLoaded, setIsLoaded] = useState(false);
@@ -62,6 +69,10 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     setProgress((prev) => {
       const courseProgress = prev[courseId] || {};
       const isComplete = !courseProgress[fileKey];
+      
+      // Send update to WebSocket server
+      sendProgressToServer(courseId, fileKey, isComplete);
+      
       return {
         ...prev,
         [courseId]: {
@@ -82,6 +93,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       const updatedProgress = { ...courseProgress };
       fileKeys.forEach((key) => {
         updatedProgress[key] = markComplete;
+        // Send each update to WebSocket server
+        sendProgressToServer(courseId, key, markComplete);
       });
       return {
         ...prev,
