@@ -27,12 +27,9 @@ export function Header({ searchItems = [] }: HeaderProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-6">
             <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <div className="p-2 bg-indigo-600 dark:bg-indigo-500 rounded-lg shadow-md shadow-indigo-500/20">
-                <BookOpen className="h-6 w-6 text-white" />
-              </div>
+              <BookOpen className="h-5 w-5 text-slate-700 dark:text-slate-200" />
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-white">🐐</h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">Course Materials Portal</p>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-white">Home</h1>
               </div>
             </Link>
           </div>
@@ -40,9 +37,6 @@ export function Header({ searchItems = [] }: HeaderProps) {
             <div className="flex items-center gap-2">
               <CommandPalette items={searchItems} />
               <StudyCartButton />
-            </div>
-            <div className="ml-4">
-              <ThemeToggle />
             </div>
           </div>
         </div>

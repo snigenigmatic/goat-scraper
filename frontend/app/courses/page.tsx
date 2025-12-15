@@ -6,6 +6,7 @@ import { Header } from "@/components/header";
 import { CourseSummary } from "@/types/course";
 import { getAllCourses, getCoursesBaseURL } from "@/lib/courses-api";
 import { FolderOpen, CheckCircle2, XCircle, ArrowRight, ArrowLeft } from "lucide-react";
+import CourseProgressBadge from "@/components/course-progress-badge";
 
 function buildSearchItems(courses: { dir: string; summary: CourseSummary }[]) {
   const items: { type: "course" | "unit" | "file"; title: string; subtitle?: string; href: string; download?: boolean }[] = [];
@@ -97,14 +98,25 @@ export default async function CoursesPage() {
                 <Link key={dir} href={`/course/${dir}`}>
                   <Card className="h-full hover:shadow-lg hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all cursor-pointer group">
                     <CardHeader>
-                      <div className="flex items-start justify-between">
-                        <Badge variant={successRate === 100 ? "default" : "secondary"} className="mb-2">
-                          {summary.course_id}
-                        </Badge>
-                        <Badge variant={summary.total_failed > 0 ? "destructive" : "outline"}>
-                          {successRate}%
-                        </Badge>
-                      </div>
+                                <div className="flex items-start justify-between">
+                                  <Badge variant={summary.total_failed > 0 ? "destructive" : "default"} className="mb-2">
+                                    {summary.course_id}
+                                  </Badge>
+                                  {
+                                    (() => {
+                                      const allFileKeys: string[] = [];
+                                      for (const unit of summary.units) {
+                                        for (const cls of unit.classes) {
+                                          const primaryFilename = (cls as any).filename ?? (cls as any).files?.[0]?.filename ?? null;
+                                          if (primaryFilename && cls.status === "success") {
+                                            allFileKeys.push(`${unit.unit_number}-${cls.class_id}`);
+                                          }
+                                        }
+                                      }
+                                      return <CourseProgressBadge courseId={dir} allFileKeys={allFileKeys} />;
+                                    })()
+                                  }
+                                </div>
                       <CardTitle className="text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {summary.course_name.split("-").pop()?.trim() || summary.course_name}
                       </CardTitle>
@@ -149,23 +161,7 @@ export default async function CoursesPage() {
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-200 dark:border-slate-700/60 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm mt-auto">
-        <div className="container mx-auto px-6 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-sm text-slate-500 dark:text-slate-400">
-              ❤️
-            </p>
-            <div className="flex gap-4 text-sm text-slate-500 dark:text-slate-400">
-              <a href="https://github.com/polarhive/goat-scraper" target="_blank" rel="noopener" className="hover:text-indigo-600 dark:hover:text-indigo-400">
-                GitHub
-              </a>
-              <span>•</span>
-              <span>Press ⌘K to search</span>
-            </div>
-          </div>
-        </div>
-      </footer>
+      {/* Footer moved to layout */}
     </div>
   );
 }

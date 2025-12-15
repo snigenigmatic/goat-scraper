@@ -13,12 +13,10 @@ import {
 import React, { useEffect, useRef, useState } from "react";
 import { useProgress } from "@/components/progress-provider";
 import { useStudyCart } from "@/components/study-cart-provider";
-import { useProgressSync } from "@/components/use-progress-sync";
-import { Leaderboard } from "@/components/leaderboard";
+import CourseOverview from "@/components/course-overview";
 import { CourseSummary, ClassInfo } from "@/types/course";
 import {
   FileText,
-  Download,
   FileIcon,
   FileSpreadsheet,
   Presentation,
@@ -28,7 +26,7 @@ import {
   File,
   Plus,
   Check,
-  BookOpen,
+  
 } from "lucide-react";
 
 interface CourseContentProps {
@@ -41,7 +39,7 @@ function getFileIcon(filename: string) {
   const ext = filename.toLowerCase().split(".").pop();
   switch (ext) {
     case "pdf":
-      return <FileText className="h-4 w-4 text-red-500" />;
+      return <FileText className="h-5 w-5 text-red-500" />;
     case "pptx":
     case "ppt":
       return <Presentation className="h-4 w-4 text-orange-500" />;
@@ -67,16 +65,7 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
   const fileRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const [openUnits, setOpenUnits] = useState<string[]>(["unit-1"]);
   
-  // WebSocket sync and leaderboard
-  const { leaderboard, username, isConnected, currentUserRank, updateUsername } = useProgressSync(courseId);
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const userId = localStorage.getItem("progress-user-id");
-      setCurrentUserId(userId);
-    }
-  }, []);
+  // WebSocket sync and leaderboard is handled by `CourseOverview` component
 
   // Generate all file keys for progress tracking
   const allFileKeys: string[] = [];
@@ -145,124 +134,9 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
 
   return (
     <>
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
-        {/* Overall Progress Card */}
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg flex items-center gap-2">
-                <BookOpen className="h-5 w-5" />
-                Your Progress
-              </CardTitle>
-              <CardDescription>
-                Track your learning progress through the course materials
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-slate-600 dark:text-slate-400">
-                    {courseProgress.completed} of {courseProgress.total} materials completed
-                  </span>
-                  <span className="font-semibold">
-                    {courseProgress.percentage}%
-                  </span>
-                </div>
-                <Progress value={courseProgress.percentage} className="h-3" />
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
-                  {summary.units.map((unit) => {
-                    const unitFileKeys = unit.classes
-                      .filter((cls) => cls.filename && cls.status === "success")
-                      .map((cls) => `${unit.unit_number}-${cls.class_id}`);
-                    const unitProgress = getUnitProgress(
-                      courseId,
-                      unit.unit_number,
-                      unitFileKeys.length,
-                      unitFileKeys
-                    );
-                    return (
-                      <div
-                        key={unit.unit_number}
-                        className="p-3 rounded-lg bg-slate-100/80 dark:bg-slate-800/40 border border-slate-200/50 dark:border-slate-700/50"
-                      >
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant="outline" className="text-xs">
-                            Unit {unit.unit_number}
-                          </Badge>
-                          {unitProgress.percentage === 100 && (
-                            <CheckCircle2 className="h-4 w-4 text-green-500" />
-                          )}
-                        </div>
-                        <Progress value={unitProgress.percentage} className="h-1.5" />
-                        <p className="text-xs text-slate-500 mt-1">
-                          {unitProgress.completed}/{unitProgress.total}
-                        </p>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+      <CourseOverview summary={summary} basePath={basePath} courseId={courseId} showLeaderboard={false} />
 
-        {/* Leaderboard */}
-        <div className="lg:col-span-1">
-          <Leaderboard
-            entries={leaderboard}
-            currentUserId={currentUserId}
-            currentUserRank={currentUserRank}
-            isConnected={isConnected}
-            username={username}
-            onUpdateUsername={updateUsername}
-          />
-        </div>
-      </div>
-
-      {/* Merged PDF Download */}
-      <Card className="mb-8">
-        <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Download className="h-5 w-5" />
-            Quick Downloads
-          </CardTitle>
-          <CardDescription>Download merged PDFs for each unit</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-3">
-            {summary.units.map((unit) => {
-              if (!unit.merged_pdf) return null;
-              const mergedPdf = `${basePath}/${unit.unit_directory}/${unit.merged_pdf}`;
-              const inCart = isInCart(mergedPdf);
-              return (
-                <div key={unit.unit_number} className="flex gap-1">
-                  <Button
-                    variant={inCart ? "default" : "outline"}
-                    className={`gap-2 ${inCart ? "bg-indigo-600 hover:bg-indigo-700" : ""}`}
-                    onClick={() =>
-                      handleAddToCart(
-                        mergedPdf,
-                        `Unit ${unit.unit_number} Merged`,
-                        unit.unit_number,
-                        courseId
-                      )
-                    }
-                  >
-                    {inCart ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                    {inCart ? "Added" : "Add to Study"}
-                  </Button>
-                  <a href={mergedPdf} download className="inline-flex">
-                    <Button variant="outline" className="gap-2">
-                      <FileText className="h-4 w-4 text-red-500" />
-                      Unit {unit.unit_number} Merged PDF
-                    </Button>
-                  </a>
-                </div>
-              );
-            })}
-          </div>
-        </CardContent>
-      </Card>
+      {/* Quick Downloads removed per UI request */}
 
       {/* Units Accordion */}
       <Card>
@@ -319,16 +193,40 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
                   <AccordionContent>
                     {/* Unit-level toggle */}
                     <div className="flex items-center justify-between py-2 mb-2 border-b border-slate-100 dark:border-slate-800">
-                      <span className="text-sm text-slate-500">
-                        {unitProgress.completed}/{unitProgress.total} completed
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant={unitProgress.percentage === 100 ? "secondary" : "outline"}
+                          size="sm"
+                          className="gap-2"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const markComplete = unitProgress.percentage < 100;
+                            toggleUnitComplete(courseId, unitFileKeys, markComplete);
+                          }}
+                        >
+                          {unitProgress.percentage === 100 ? (
+                            <>
+                              <CheckCircle2 className="h-4 w-4 text-green-500" />
+                              <span className="hidden sm:inline">Unit Complete</span>
+                              <span className="sm:hidden">Done</span>
+                            </>
+                          ) : (
+                            <>
+                              <Circle className="h-4 w-4" />
+                              <span className="hidden sm:inline">Mark Unit Complete</span>
+                              <span className="sm:hidden">Mark</span>
+                            </>
+                          )}
+                        </Button>
+                      </div>
                       <div className="flex items-center gap-2">
                         {/* Add whole unit to study (merged PDF if available, otherwise enqueue files) */}
                         <Button
                           variant="outline"
                           size="sm"
                           className="gap-2"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             // Always add individual slides/files from the unit (not the merged PDF)
                             unit.classes.forEach((cls) => {
                               const primaryFilename = (cls as any).filename ?? (cls as any).files?.[0]?.filename ?? null;
@@ -340,30 +238,9 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
                             });
                           }}
                         >
-                          <FileText className="h-4 w-4" />
-                          Add Unit to Study
-                        </Button>
-
-                        <Button
-                          variant={unitProgress.percentage === 100 ? "secondary" : "outline"}
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => {
-                            const markComplete = unitProgress.percentage < 100;
-                            toggleUnitComplete(courseId, unitFileKeys, markComplete);
-                          }}
-                        >
-                          {unitProgress.percentage === 100 ? (
-                            <>
-                              <CheckCircle2 className="h-4 w-4 text-green-500" />
-                              Unit Complete
-                            </>
-                          ) : (
-                            <>
-                              <Circle className="h-4 w-4" />
-                              Mark Unit Complete
-                            </>
-                          )}
+                          <FileText className="h-5 w-5" />
+                          <span className="hidden sm:inline">Add Unit to Study</span>
+                          <span className="sm:hidden">Add</span>
                         </Button>
                       </div>
                     </div>
@@ -445,23 +322,11 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
                                         }}
                                       >
                                         {inCart ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                                        {inCart ? "Added" : "Study"}
+                                        <span className="hidden sm:inline">{inCart ? "Added" : "Study"}</span>
                                       </Button>
                                     );
                                   })()}
-                                  <a
-                                    href={filePath!}
-                                    download
-                                    onClick={(e) => {
-                                      // allow download but prevent toggling row
-                                      e.stopPropagation();
-                                    }}
-                                  >
-                                    <Button size="sm" variant="ghost" className="gap-2">
-                                      <Download className="h-4 w-4" />
-                                      Download
-                                    </Button>
-                                  </a>
+                                  
                                 </div>
                               ) : (
                                 <Badge variant="destructive">Failed</Badge>
@@ -482,6 +347,10 @@ export function CourseContent({ summary, basePath, courseId }: CourseContentProp
           </Accordion>
         </CardContent>
       </Card>
+      {/* Render the live leaderboard after the units list */}
+      <div className="mt-6">
+        <CourseOverview summary={summary} basePath={basePath} courseId={courseId} showProgress={false} />
+      </div>
 
     </>
   );

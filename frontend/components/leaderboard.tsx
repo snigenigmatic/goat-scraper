@@ -157,7 +157,7 @@ export function Leaderboard({ entries, currentUserId, currentUserRank, isConnect
             <p className="text-xs mt-1">Be the first to make progress!</p>
           </div>
         ) : (
-          <ScrollArea className="h-[400px] pr-4">
+          <ScrollArea className="h-[220px] pr-4">
             <div className="space-y-2">
               {entries.map((entry, index) => {
                 const rank = index + 1;

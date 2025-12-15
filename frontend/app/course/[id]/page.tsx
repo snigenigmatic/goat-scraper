@@ -12,6 +12,7 @@ import {
   Calendar,
   Layers,
 } from "lucide-react";
+import CourseProgressBadge from "@/components/course-progress-badge";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -28,12 +29,16 @@ export default async function CoursePage({ params }: Props) {
   const { summary, dir } = data;
   const baseURL = getCoursesBaseURL();
   const basePath = `${baseURL}/${dir}`;
-  const successRate =
-    summary.total_downloaded > 0
-      ? Math.round(
-          (summary.total_downloaded / (summary.total_downloaded + summary.total_failed)) * 100
-        )
-      : 0;
+  // Build list of file keys for client-side progress calculation
+  const allFileKeys: string[] = [];
+  for (const unit of summary.units) {
+    for (const cls of unit.classes) {
+      const primaryFilename = (cls as any).filename ?? (cls as any).files?.[0]?.filename ?? null;
+      if (primaryFilename && cls.status === "success") {
+        allFileKeys.push(`${unit.unit_number}-${cls.class_id}`);
+      }
+    }
+  }
 
   // Build search items for this course
   const searchItems: { type: "course" | "unit" | "file"; title: string; subtitle?: string; href: string; download?: boolean }[] = [
@@ -86,9 +91,7 @@ export default async function CoursePage({ params }: Props) {
         <div className="mb-8">
           <div className="flex flex-wrap items-center gap-2 mb-3">
             <Badge variant="default">{summary.course_id}</Badge>
-            <Badge variant={summary.total_failed > 0 ? "destructive" : "outline"}>
-              {successRate}% downloaded
-            </Badge>
+            <CourseProgressBadge courseId={dir} allFileKeys={allFileKeys} />
           </div>
           <h2 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
             {summary.course_name}
