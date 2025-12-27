@@ -16,6 +16,7 @@ import logging
 import argparse
 import subprocess
 import shutil
+import getpass
 from typing import Optional, Dict, List, Any, Tuple
 import requests
 from bs4 import BeautifulSoup
@@ -169,6 +170,47 @@ def convert_to_pdf(input_path: Path) -> Optional[Path]:
                     # Optionally remove original
                     # input_path.unlink()
                     return output_path
+                
+                # Check if LibreOffice failed to load the file (corrupted zip)
+                if "source file could not be loaded" in result.stderr.lower() or "error" in result.stderr.lower():
+                    logger.warning(f"LibreOffice failed to load file, attempting zip repair...")
+                    
+                    # Try to repair the file using zip -FF
+                    repaired_path = input_path.parent / f"{input_path.stem}_repaired{suffix}"
+                    try:
+                        repair_result = subprocess.run([
+                            'zip', '-FF', str(input_path), '--out', str(repaired_path)
+                        ], capture_output=True, text=True, timeout=60)
+                        
+                        if repaired_path.exists() and repaired_path.stat().st_size > 0:
+                            logger.info(f"✓ Repaired corrupted file: {repaired_path.name}")
+                            
+                            # Replace the corrupted original with the repaired version
+                            repaired_path.replace(input_path)
+                            
+                            # Try converting the repaired file (now has original name)
+                            logger.info(f"Converting repaired file to PDF...")
+                            retry_result = subprocess.run([
+                                soffice,
+                                '--headless',
+                                '--convert-to', 'pdf',
+                                '--outdir', str(input_path.parent),
+                                str(input_path)
+                            ], capture_output=True, text=True, timeout=120)
+                            
+                            if output_path.exists():
+                                logger.info(f"✓ Converted repaired file to PDF: {output_path}")
+                                return output_path
+                            else:
+                                logger.warning(f"Failed to convert repaired file")
+                        else:
+                            logger.warning(f"Zip repair failed or produced empty file")
+                    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+                        logger.debug(f"Zip repair failed: {e}")
+                        # Clean up if repair file was created
+                        if repaired_path.exists():
+                            repaired_path.unlink()
+                    
             except (subprocess.TimeoutExpired, FileNotFoundError, Exception) as e:
                 logger.debug(f"LibreOffice conversion failed: {e}")
                 continue
@@ -1667,12 +1709,12 @@ Examples:
             # Fallback to manual input
             print("Enter your PESU Academy credentials:")
             username = input("Username (SRN): ").strip()
-            password = input("Password: ").strip()
+            password = getpass.getpass("Password: ").strip()
     except ImportError:
         # If dotenv not available, ask for manual input
         print("Enter your PESU Academy credentials:")
         username = input("Username (SRN): ").strip()
-        password = input("Password: ").strip()
+        password = getpass.getpass("Password: ").strip()
     
     if not username or not password:
         print("❌ Username and password are required.")
