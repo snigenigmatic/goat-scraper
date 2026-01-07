@@ -10,3 +10,4 @@
 .DS_Store
 .vercel
 frontend/public/courses/
+.env*.local

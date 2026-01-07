@@ -18,6 +18,7 @@ import subprocess
 import shutil
 import getpass
 from typing import Optional, Dict, List, Any, Tuple
+import re
 import requests
 from bs4 import BeautifulSoup
 from pathlib import Path
@@ -282,61 +283,174 @@ class PESUPDFFetcher:
         self.session = requests.Session()
         self.username = username
         self.password = password
+        # Track whether we have a valid authenticated session (cookie-based or validated)
+        self._authenticated = False
         logger.info(f"Initialized PDF fetcher for user: {username}")
     
     def _extract_csrf_token(self, html_content: str) -> str:
-        """Extract CSRF token from HTML content."""
+        """Extract CSRF token from HTML content using multiple heuristics:
+        - hidden input named _csrf
+        - meta tags like _csrf, csrf-token, csrf
+        - inline JS assignment patterns
+        - any UUID-like token as fallback
+        Raises AuthenticationError if nothing found.
+        """
         soup = BeautifulSoup(html_content, "html.parser")
+
+        # 1) standard hidden input
         csrf_input = soup.find("input", {"name": "_csrf"})
-        
-        if not csrf_input or not csrf_input.get("value"):
-            raise AuthenticationError("CSRF token not found in response")
-        
-        return csrf_input.get("value")
+        if csrf_input and csrf_input.get("value"):
+            return csrf_input.get("value")  # type: ignore
+
+        # 2) meta tags
+        for meta_name in ("_csrf", "csrf-token", "csrf"):
+            m = soup.find("meta", {"name": meta_name})
+            if m and m.get("content"):
+                return m.get("content")  # type: ignore
+
+        # 3) JS inline assignment e.g. _csrf = 'uuid' or "_csrf":"uuid"
+        m = re.search(r"_csrf['\"]?\s*[:=]\s*['\"]([0-9a-fA-F-]{8,})['\"]", html_content)
+        if m:
+            return m.group(1)
+
+        # 4) fallback: any UUID in page
+        m2 = re.search(r"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})", html_content, re.I)
+        if m2:
+            return m2.group(1)
+
+        raise AuthenticationError("CSRF token not found in response")
     
     def login(self) -> None:
         """Authenticate with PESU Academy."""
         logger.info("Starting authentication process...")
-        
+
         try:
-            # Get login page and extract CSRF token
+            # GET initial page (login landing)
             login_page_url = f"{self.BASE_URL}/"
-            response = self.session.get(login_page_url)
-            response.raise_for_status()
-            
-            csrf_token = self._extract_csrf_token(response.text)
-            
-            # Submit login credentials
+            r0 = self.session.get(login_page_url, timeout=15)
+            r0.raise_for_status()
+            logger.debug(f"Login page GET status={getattr(r0, 'status_code', None)} url={getattr(r0, 'url', None)}")
+            logger.debug(f"Session cookies before login: {self.session.cookies.get_dict()}")
+
+            # Try multiple ways to obtain CSRF token (HTML > JS > cookie)
+            try:
+                csrf_token = self._extract_csrf_token(r0.text)
+                csrf_source = "html"
+            except AuthenticationError:
+                csrf_token = self.session.cookies.get("XSRF-TOKEN") or self.session.cookies.get("CSRF-TOKEN")
+                csrf_source = "cookie" if csrf_token else None
+
+            if not csrf_token:
+                raise AuthenticationError("Missing CSRF token (no HTML token or cookie)")
+
+            # Post login
             login_url = f"{self.BASE_URL}/j_spring_security_check"
             login_payload = {
                 "j_username": self.username,
                 "j_password": self.password,
                 "_csrf": csrf_token,
             }
-            
-            login_response = self.session.post(login_url, data=login_payload)
-            login_response.raise_for_status()
-            
-            # Validate authentication
+
+            headers = {
+                "Content-Type": "application/x-www-form-urlencoded",
+                "Referer": r0.url,
+                "Origin": "https://www.pesuacademy.com",
+            }
+
+            resp = self.session.post(login_url, data=login_payload, headers=headers, allow_redirects=True, timeout=15)
+            logger.debug(f"Login POST status={getattr(resp, 'status_code', None)} url={getattr(resp, 'url', None)}")
+            cookies = self.session.cookies.get_dict()
+            logger.debug(f"Session cookies after login: {cookies}")
+
+            # If server set a session cookie, accept it as authentication proof (minimize extra requests)
+            if "JSESSIONID" in cookies or "SESSION" in cookies:
+                self._authenticated = True
+                logger.info("✓ Authentication successful (session cookie present — skipping additional validation)")
+                return
+
+            # Otherwise, inspect the POST response body for hints that we are logged in
+            body = (resp.text or "").lower()
+            if (
+                "studentprofile" in body
+                or "logout" in body
+                or "/a/0" in getattr(resp, 'url', '')
+            ):
+                self._authenticated = True
+                logger.info("✓ Authentication successful (detected profile content in POST response)")
+                return
+
+            # Detect explicit failed login markers
+            if (
+                "j_username" in body
+                or "j_spring_security_check" in body
+                or ("invalid" in body and "login" in body)
+            ):
+                raise AuthenticationError("Authentication failed: login page or error detected after POST")
+
+            # Ambiguous case: try https alternative once (if redirect to http), and only then validate profile to confirm
+            try:
+                if getattr(resp, "url", "").startswith("http://"):
+                    alt = "https://" + resp.url.split("://", 1)[1]
+                    alt_resp = self.session.get(alt, allow_redirects=True, timeout=15)
+                    alt_body = (alt_resp.text or "").lower()
+                    if alt_resp.status_code < 400 and ("studentprofile" in alt_body or "logout" in alt_body or "/a/0" in getattr(alt_resp, 'url', '')):
+                        self._authenticated = True
+                        logger.info("✓ Authentication successful (https fallback detected profile)")
+                        return
+            except Exception:
+                pass
+
+            # Last resort: perform a single profile validation request
             self._validate_authentication()
-            
-            logger.info("✓ Authentication successful")
-            
+            self._authenticated = True
+            logger.info("✓ Authentication successful (validated via profile check)")
+
         except requests.RequestException as e:
             raise AuthenticationError(f"Network error during authentication: {e}")
         except Exception as e:
             raise AuthenticationError(f"Authentication failed: {e}")
     
     def _validate_authentication(self) -> None:
-        """Validate that authentication was successful."""
+        """Validate that authentication was successful using heuristics on profile page."""
         profile_url = f"{self.BASE_URL}/s/studentProfilePESU"
-        
+
         try:
-            profile_response = self.session.get(profile_url, allow_redirects=False)
-            
-            if profile_response.status_code in (302, 301):
-                raise AuthenticationError("Authentication failed: Invalid credentials")
-                
+            profile_response = self.session.get(profile_url, allow_redirects=True, timeout=15)
+            logger.debug(f"Profile fetch status={getattr(profile_response, 'status_code', None)} url={getattr(profile_response, 'url', None)}")
+            app_body = (profile_response.text or "").lower()
+
+            if profile_response.status_code == 200:
+                # Heuristics for successful login
+                if (
+                    "studentprofile" in app_body
+                    or "logout" in app_body
+                    or "/a/0" in getattr(profile_response, 'url', '')
+                ):
+                    self._authenticated = True
+                    return
+
+                # Detect login form indicating failed auth
+                if re.search(r'name=["\']j_username["\']', app_body):
+                    raise AuthenticationError("Authentication failed: login form detected after login")
+
+                raise AuthenticationError("Authentication failed: unexpected profile response")
+
+            elif profile_response.status_code in (301, 302):
+                raise AuthenticationError("Authentication failed: redirected to login")
+
+            elif profile_response.status_code == 404:
+                # Sometimes servers return 404 for certain internal endpoints even when a session exists.
+                cookies = self.session.cookies.get_dict()
+                logger.debug(f"Profile returned 404; cookies={cookies}")
+                if "JSESSIONID" in cookies or "SESSION" in cookies:
+                    logger.warning("Profile returned 404 but session cookie found; assuming authentication succeeded")
+                    self._authenticated = True
+                    return
+                raise AuthenticationError("Authentication failed: profile returned 404")
+
+            else:
+                raise AuthenticationError(f"Authentication failed: HTTP {profile_response.status_code}")
+
         except requests.RequestException as e:
             raise AuthenticationError(f"Failed to validate authentication: {e}")
     
@@ -345,9 +459,15 @@ class PESUPDFFetcher:
         try:
             logout_url = f"{self.BASE_URL}/logout"
             self.session.get(logout_url)
+            # Clear authenticated state
+            self._authenticated = False
             logger.info("✓ Session terminated")
         except requests.RequestException as e:
             logger.warning(f"Error during logout: {e}")
+
+    def is_authenticated(self) -> bool:
+        """Return whether this fetcher currently has a validated authenticated session."""
+        return bool(self._authenticated)
     
     # ========================================================================
     # STEP 1: Get Subject Codes
