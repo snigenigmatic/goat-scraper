@@ -77877,7 +77877,7 @@
   {
     "id": "20875",
     "subjectCode": "UM23BS344A",
-    "subjectName": "UM23BS344A-Media in Sports / Journalism"
+    "subjectName": "UM23BS344A-Media in Sports / Sports Journalism"
   },
   {
     "id": "20876",
@@ -78172,7 +78172,7 @@
   {
     "id": "20934",
     "subjectCode": "UM25BE121A",
-    "subjectName": "UM25BE121A-Mini Project-I"
+    "subjectName": "UM25BE121A-Mini Project - I"
   },
   {
     "id": "20935",
@@ -78202,7 +78202,7 @@
   {
     "id": "20940",
     "subjectCode": "UM24BE221A",
-    "subjectName": "UM24BE221A-Mini Project-III"
+    "subjectName": "UM24BE221A-Mini Project - III"
   },
   {
     "id": "20941",
@@ -78227,12 +78227,12 @@
   {
     "id": "20945",
     "subjectCode": "UM23BE345A",
-    "subjectName": "UM23BE345A-Merchant Banking &Venture Capital"
+    "subjectName": "UM23BE345A-Merchant Banking & Venture Capital"
   },
   {
     "id": "20946",
     "subjectCode": "UM23BE321A",
-    "subjectName": "UM23BE321A-Mini Project-V"
+    "subjectName": "UM23BE321A-Mini Project - V"
   },
   {
     "id": "20947",
@@ -79247,7 +79247,7 @@
   {
     "id": "21149",
     "subjectCode": "UA24FA223A",
-    "subjectName": "UA24FA223A-Building Services - I (Surveying & Leveling, water supply & Sanitation)"
+    "subjectName": "UA24FA223A-Building Services - I (Surveying & Leveling, Water Supply & Sanitation)"
   },
   {
     "id": "21150",
@@ -79257,7 +79257,7 @@
   {
     "id": "21151",
     "subjectCode": "UA24FA225A",
-    "subjectName": "UA24FA225A-Vacation Assignment/ Study Tour/ Summer Term Assignment -I"
+    "subjectName": "UA24FA225A-Vacation Assignment/ Study Tour/ Summer Term Assignment - I"
   },
   {
     "id": "21152",
@@ -79387,12 +79387,12 @@
   {
     "id": "21177",
     "subjectCode": "UD25FD152A",
-    "subjectName": "UD25FD152A-Indian Art and VIsual Art Techniques - I"
+    "subjectName": "UD25FD152A-Indian Art and Visual Art Techniques - I"
   },
   {
     "id": "21178",
     "subjectCode": "UD25FD141A",
-    "subjectName": "UD25FD141A-Graphics and Drawing Tehniques"
+    "subjectName": "UD25FD141A-Graphics and Drawing Techniques"
   },
   {
     "id": "21179",
@@ -79402,7 +79402,7 @@
   {
     "id": "21180",
     "subjectCode": "UD25FD143A",
-    "subjectName": "UD25FD143A-Phtotgraphy and Videography"
+    "subjectName": "UD25FD143A-Photography and Videography"
   },
   {
     "id": "21181",
@@ -83621,8 +83621,8 @@
   },
   {
     "id": "22024",
-    "subjectCode": "UB25PY651BC2",
-    "subjectName": "UB25PY651BC2- Forensic Assessment and Interview I"
+    "subjectCode": "UB25PY652BC2",
+    "subjectName": "UB25PY652BC2- Forensic Assessment and Interview I"
   },
   {
     "id": "22025",
@@ -83651,87 +83651,177 @@
   },
   {
     "id": "22030",
-    "subjectCode": "2533",
-    "subjectName": "2533-PHYSICS"
+    "subjectCode": "25PU133",
+    "subjectName": "25PU133-PHYSICS"
   },
   {
     "id": "22031",
-    "subjectCode": "2534",
-    "subjectName": "2534-CHEMISTRY"
+    "subjectCode": "25PU134",
+    "subjectName": "25PU134-CHEMISTRY"
   },
   {
     "id": "22032",
-    "subjectCode": "2535",
-    "subjectName": "2535-MATHEMATICS"
+    "subjectCode": "25PU135",
+    "subjectName": "25PU135-MATHEMATICS"
   },
   {
     "id": "22033",
-    "subjectCode": "2536",
-    "subjectName": "2536-BIOLOGY"
+    "subjectCode": "25PU136",
+    "subjectName": "25PU136-BIOLOGY"
   },
   {
     "id": "22034",
-    "subjectCode": "2541",
-    "subjectName": "2541-COMPUTER SCIENCE"
+    "subjectCode": "25PU141",
+    "subjectName": "25PU141-COMPUTER SCIENCE"
   },
   {
     "id": "22035",
-    "subjectCode": "2540",
-    "subjectName": "2540-ELECTRONICS"
+    "subjectCode": "25PU140",
+    "subjectName": "25PU140-ELECTRONICS"
   },
   {
     "id": "22036",
-    "subjectCode": "251",
-    "subjectName": "251-KANNADA"
+    "subjectCode": "25PU11",
+    "subjectName": "25PU11-KANNADA"
   },
   {
     "id": "22037",
-    "subjectCode": "259",
-    "subjectName": "259-SANSKRIT"
+    "subjectCode": "25PU19",
+    "subjectName": "25PU19-SANSKRIT"
   },
   {
     "id": "22038",
-    "subjectCode": "253",
-    "subjectName": "253-HINDI"
+    "subjectCode": "25PU13",
+    "subjectName": "25PU13-HINDI"
   },
   {
     "id": "22039",
-    "subjectCode": "255",
-    "subjectName": "255-TELUGU"
+    "subjectCode": "25PU15",
+    "subjectName": "25PU15-TELUGU"
   },
   {
     "id": "22040",
-    "subjectCode": "252",
-    "subjectName": "252-ENGLISH"
+    "subjectCode": "25PU12",
+    "subjectName": "25PU12-ENGLISH"
   },
   {
     "id": "22041",
-    "subjectCode": "2527",
-    "subjectName": "2527-BUSINESS STUDIES"
+    "subjectCode": "25PU127",
+    "subjectName": "25PU127-BUSINESS STUDIES"
   },
   {
     "id": "22042",
-    "subjectCode": "2530",
-    "subjectName": "2530-ACCOUNTANCY"
+    "subjectCode": "25PU130",
+    "subjectName": "25PU130-ACCOUNTANCY"
   },
   {
     "id": "22043",
-    "subjectCode": "2522",
-    "subjectName": "2522-ECONOMICS"
+    "subjectCode": "25PU122",
+    "subjectName": "25PU122-ECONOMICS"
   },
   {
     "id": "22044",
-    "subjectCode": "2524",
-    "subjectName": "2524-GEOGRAPHY"
+    "subjectCode": "25PU124",
+    "subjectName": "25PU124-GEOGRAPHY"
   },
   {
     "id": "22045",
-    "subjectCode": "2575",
-    "subjectName": "2575-BASIC MATHS"
+    "subjectCode": "25PU175",
+    "subjectName": "25PU175-BASIC MATHS"
   },
   {
     "id": "22046",
-    "subjectCode": "2531",
-    "subjectName": "2531-STATISTICS"
+    "subjectCode": "25PU131",
+    "subjectName": "25PU131-STATISTICS"
+  },
+  {
+    "id": "22047",
+    "subjectCode": "UE25CS643BA1",
+    "subjectName": "UE25CS643BA1-Million Way Parallelism"
+  },
+  {
+    "id": "22048",
+    "subjectCode": "UE25CS643BA2",
+    "subjectName": "UE25CS643BA2-Speech and Natural Language Processing"
+  },
+  {
+    "id": "22049",
+    "subjectCode": "UE25CS643BA3",
+    "subjectName": "UE25CS643BA3-Topics in Computer and Network Security"
+  },
+  {
+    "id": "22050",
+    "subjectCode": "UE25CS644BB1",
+    "subjectName": "UE25CS644BB1-Advances in Cloud Computing"
+  },
+  {
+    "id": "22051",
+    "subjectCode": "UE25CS644BB2",
+    "subjectName": "UE25CS644BB2-Virtual Reality and its applications"
+  },
+  {
+    "id": "22052",
+    "subjectCode": "UE25CS644BB3",
+    "subjectName": "UE25CS644BB3-Software Security"
+  },
+  {
+    "id": "22053",
+    "subjectCode": "UE25CS645BC1",
+    "subjectName": "UE25CS645BC1-Advanced Big Data Analytics"
+  },
+  {
+    "id": "22054",
+    "subjectCode": "UE25CS645BC2",
+    "subjectName": "UE25CS645BC2-Deep Learning Theory and Practices"
+  },
+  {
+    "id": "22055",
+    "subjectCode": "UE25CS645BC3",
+    "subjectName": "UE25CS645BC3-Cryptography"
+  },
+  {
+    "id": "22056",
+    "subjectCode": "UX25CS631A",
+    "subjectName": "UX25CS631A-Python for Data Science"
+  },
+  {
+    "id": "22057",
+    "subjectCode": "UX25CS632A",
+    "subjectName": "UX25CS632A-Databases &SQL"
+  },
+  {
+    "id": "22058",
+    "subjectCode": "UX25CS641A",
+    "subjectName": "UX25CS641A-Analytical Methods in Engineering Systems"
+  },
+  {
+    "id": "22059",
+    "subjectCode": "UX25CS633A",
+    "subjectName": "UX25CS633A-Data Visualization using Tableau"
+  },
+  {
+    "id": "22060",
+    "subjectCode": "UX25CS634A",
+    "subjectName": "UX25CS634A-Supervised Machine Learning - Regression"
+  },
+  {
+    "id": "22061",
+    "subjectCode": "UX25CS635A",
+    "subjectName": "UX25CS635A-Supervised Machine Learning - Classification"
+  },
+  {
+    "id": "22062",
+    "subjectCode": "UE24CS721B",
+    "subjectName": "UE24CS721B-Software Testing"
+  },
+  {
+    "id": "22063",
+    "subjectCode": "UE24CS7A1B",
+    "subjectName": "UE24CS7A1B-Project Work Phase II"
+  },
+  {
+    "id": "22064",
+    "subjectCode": "UE24EC7A1A",
+    "subjectName": "UE24EC7A1A-Project Work Phase - I"
   }
 ]

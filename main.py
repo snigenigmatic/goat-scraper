@@ -2020,6 +2020,9 @@ def batch_download_all(
             f for f in unit_pdfs if f.suffix.lower() == ".pdf"
         ] + converted_pdfs
 
+        # Sort PDFs by filename to ensure correct order (01_, 02_, etc.)
+        pdf_files_only.sort(key=lambda x: x.name)
+
         # Merge PDFs for this unit (non-PDF files will be skipped) unless --no-merge flag is set
         if pdf_files_only and not skip_merge:
             print(
@@ -2044,6 +2047,9 @@ def batch_download_all(
             logger.debug(
                 f"  No PDF files to merge for this unit (downloaded {len(unit_pdfs)} non-PDF files)"
             )
+
+        # Sort classes by class_number to ensure proper order in JSON and merged PDF
+        unit_summary["classes"].sort(key=lambda x: x["class_number"])
 
         summary["units"].append(unit_summary)
 
