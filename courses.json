@@ -76932,7 +76932,7 @@
   {
     "id": "20686",
     "subjectCode": "UE23EC321A",
-    "subjectName": "UE23EC321A-Project work Phase-I"
+    "subjectName": "UE23EC321A-Project Work Phase - I"
   },
   {
     "id": "20687",
@@ -78422,12 +78422,12 @@
   {
     "id": "20984",
     "subjectCode": "UE23CS321A",
-    "subjectName": "UE23CS321A-Capstone Project-Phase-I"
+    "subjectName": "UE23CS321A-Capstone Project Phase - I"
   },
   {
     "id": "20985",
     "subjectCode": "UE23AM342AA1",
-    "subjectName": "UE23AM342AA1-Advanced Foundations for ML"
+    "subjectName": "UE23AM342AA1-Advanced Foundations for Machine Learning"
   },
   {
     "id": "20986",
@@ -79152,7 +79152,7 @@
   {
     "id": "21130",
     "subjectCode": "UE23AM321A",
-    "subjectName": "UE23AM321A-Capstone Project-Phase-I"
+    "subjectName": "UE23AM321A-Capstone Project Phase - I"
   },
   {
     "id": "21131",
@@ -82502,12 +82502,12 @@
   {
     "id": "21800",
     "subjectCode": "UL25BL144B",
-    "subjectName": "UL25BL144B-Constitutional Law â II"
+    "subjectName": "UL25BL144B-Constitutional Law - II"
   },
   {
     "id": "21801",
     "subjectCode": "UL25BL145B",
-    "subjectName": "UL25BL145B-Family Law â I"
+    "subjectName": "UL25BL145B-Family Law - I"
   },
   {
     "id": "21802",
@@ -82711,8 +82711,8 @@
   },
   {
     "id": "21842",
-    "subjectCode": "Capstone Project Phase ",
-    "subjectName": "Capstone Project Phase - III-UE22CS441A"
+    "subjectCode": "Testing",
+    "subjectName": "Testing-testing"
   },
   {
     "id": "21843",
@@ -83227,7 +83227,7 @@
   {
     "id": "21945",
     "subjectCode": "UB22PY444B",
-    "subjectName": "UB22PY444B-Forensic Psychology"
+    "subjectName": "UB22PY444B-Perspectives in  Forensic Psychology"
   },
   {
     "id": "21946",
@@ -83843,5 +83843,175 @@
     "id": "22068",
     "subjectCode": "UH24MB202T",
     "subjectName": "UH24MB202T-Pathology - Theory"
+  },
+  {
+    "id": "22069",
+    "subjectCode": "UH24AE101",
+    "subjectName": "UH24AE101-Attitude Ethics & Communication"
+  },
+  {
+    "id": "22070",
+    "subjectCode": "UE24CS242BY",
+    "subjectName": "UE24CS242BY-Operating Systems"
+  },
+  {
+    "id": "22071",
+    "subjectCode": "UE23CS352AY",
+    "subjectName": "UE23CS352AY-Database Management System"
+  },
+  {
+    "id": "22072",
+    "subjectCode": "UP25BP141B",
+    "subjectName": "UP25BP141B-Human Anatomy & Physiology II"
+  },
+  {
+    "id": "22073",
+    "subjectCode": "UP25BP144B",
+    "subjectName": "UP25BP144B-Pathophysiology"
+  },
+  {
+    "id": "22074",
+    "subjectCode": "UP25BP143B",
+    "subjectName": "UP25BP143B-Biochemistry"
+  },
+  {
+    "id": "22075",
+    "subjectCode": "UP25BP142B",
+    "subjectName": "UP25BP142B-Pharmaceutical Organic Chemistry - I"
+  },
+  {
+    "id": "22076",
+    "subjectCode": "UP25BP131B",
+    "subjectName": "UP25BP131B-Computer Application in Pharmacy"
+  },
+  {
+    "id": "22077",
+    "subjectCode": "UP25BP132B",
+    "subjectName": "UP25BP132B-Environmental Sciences"
+  },
+  {
+    "id": "22078",
+    "subjectCode": "UP25BP121B",
+    "subjectName": "UP25BP121B-Human Anatomy & Physiology II - Practical"
+  },
+  {
+    "id": "22079",
+    "subjectCode": "UP25BP123B",
+    "subjectName": "UP25BP123B-Biochemistry - Practical"
+  },
+  {
+    "id": "22080",
+    "subjectCode": "UP25BP122B",
+    "subjectName": "UP25BP122B-Pharmaceutical Organic Chemistry - I Practical"
+  },
+  {
+    "id": "22081",
+    "subjectCode": "UP25BP111B",
+    "subjectName": "UP25BP111B-Computer Application - Practical"
+  },
+  {
+    "id": "22082",
+    "subjectCode": "UE19BT503.",
+    "subjectName": "UE19BT503.-Nanobiotechnology"
+  },
+  {
+    "id": "22083",
+    "subjectCode": "UE19BT504.",
+    "subjectName": "UE19BT504.-Plant Biotechnology"
+  },
+  {
+    "id": "22084",
+    "subjectCode": "UP22BP461B",
+    "subjectName": "UP22BP461B-Project Work"
+  },
+  {
+    "id": "22085",
+    "subjectCode": "UP22BP411B",
+    "subjectName": "UP22BP411B-Extracurricular/Co-Curricular Activities"
+  },
+  {
+    "id": "22086",
+    "subjectCode": "UM23BH351B",
+    "subjectName": "UM23BH351B-HOTEL INDUSTRY"
+  },
+  {
+    "id": "22087",
+    "subjectCode": "UM23BH352B",
+    "subjectName": "UM23BH352B-EVENT INDUSTRY"
+  },
+  {
+    "id": "22088",
+    "subjectCode": "UQ23CA321BC",
+    "subjectName": "UQ23CA321BC-Digital Marketing"
+  },
+  {
+    "id": "22089",
+    "subjectCode": "UQ23CA321BB",
+    "subjectName": "UQ23CA321BB-Fundamentals of Blockchain Technology"
+  },
+  {
+    "id": "22090",
+    "subjectCode": "UQ23CA321BA",
+    "subjectName": "UQ23CA321BA-Introduction to Cryptography"
+  },
+  {
+    "id": "22091",
+    "subjectCode": "UQ23CA322B",
+    "subjectName": "UQ23CA322B-Capstone Project Phase - III"
+  },
+  {
+    "id": "22092",
+    "subjectCode": "UH24PT104",
+    "subjectName": "UH24PT104-Biomechanics"
+  },
+  {
+    "id": "22093",
+    "subjectCode": "UH24MS202",
+    "subjectName": "UH24MS202-Introduction to Medical Subjects-1: General Medicine,Dermatology,Ophthalmology and ENT"
+  },
+  {
+    "id": "22094",
+    "subjectCode": "UH24MS201",
+    "subjectName": "UH24MS201-Community Medicine"
+  },
+  {
+    "id": "22095",
+    "subjectCode": "UH24CC204",
+    "subjectName": "UH24CC204-Introduction to Cardiac Care Technology"
+  },
+  {
+    "id": "22096",
+    "subjectCode": "UH24CC202",
+    "subjectName": "UH24CC202-Applied Pathology & Applied  Microbiology"
+  },
+  {
+    "id": "22097",
+    "subjectCode": "UH24EM203",
+    "subjectName": "UH24EM203-Emergency Department Pharmacology"
+  },
+  {
+    "id": "22098",
+    "subjectCode": "UH24EM202",
+    "subjectName": "UH24EM202-Emergency Department Equipment"
+  },
+  {
+    "id": "22099",
+    "subjectCode": "UH24EM201",
+    "subjectName": "UH24EM201-Introduction to Emergency Medical Services"
+  },
+  {
+    "id": "22100",
+    "subjectCode": "UH24ML203",
+    "subjectName": "UH24ML203-Pathology - II"
+  },
+  {
+    "id": "22101",
+    "subjectCode": "UH24ML202",
+    "subjectName": "UH24ML202-Microbiology - II"
+  },
+  {
+    "id": "22102",
+    "subjectCode": "UH24ML201",
+    "subjectName": "UH24ML201-Biochemistry - II"
   }
 ]
